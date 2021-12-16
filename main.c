@@ -1,106 +1,107 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <map>
 
-int checkNeighbours(std::vector<std::vector<char>> &board, int j, int k, char target) {
+const char NETWORK = '.';
+const char MALWARE = '*';
+const char FIREWALL = 'f';
+const char HEALTHY = 'o';
+const char INFECTED = 'x';
+
+int checkNeighbours(std::map<char, int> &neighbours, char target) {
+    auto foundElem = neighbours.find(target);
+
+    if (neighbours.end() != foundElem) {
+        return foundElem->second;
+    }
+    return 0;
+}
+
+auto checkNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
+    std::map<char, int> neighbours;
     int height = board.size();
     int width = board.at(0).size();
-    int counter = 0;
     if (k - 1 >= 0) {
-        if (board[j][k - 1] == target)
-            ++counter;
-        if (j - 1 >= 0 && board[j - 1][k - 1] == target)
-            ++counter;
-        if (j + 1 < height && board[j + 1][k - 1] == target)
-            ++counter;
+        neighbours[board[j][k - 1]]++;
+        if (j - 1 >= 0) {
+            neighbours[board[j - 1][k - 1]]++;
+        }
+        if (j + 1 < height) {
+            neighbours[board[j + 1][k - 1]]++;
+        }
     }
 
     if (k + 1 < width) {
-        if (board[j][k + 1] == target)
-            ++counter;
-        if (j - 1 >= 0 && board[j - 1][k + 1] == target)
-            ++counter;
-        if (j + 1 < height && board[j + 1][k + 1] == target)
-            ++counter;
+        neighbours[board[j][k + 1]]++;
+
+        if (j - 1 >= 0) {
+            neighbours[board[j - 1][k + 1]]++;
+        }
+        if (j + 1 < height) {
+            neighbours[board[j + 1][k + 1]]++;
+        }
     }
 
-    if (j - 1 >= 0 && board[j - 1][k] == target)
-        ++counter;
-    if (j + 1 < height && board[j + 1][k] == target)
-        ++counter;
+    if (j - 1 >= 0) {
+        neighbours[board[j - 1][k]]++;
+    }
+    if (j + 1 < height) {
+        neighbours[board[j + 1][k]]++;
+    }
 
-    return counter;
+    return neighbours;
 }
 
-int checkNetworkNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
-    return checkNeighbours(board, j, k, '.');
-}
+char networkCellOptions(std::map<char, int> &neighbours) {
 
-int checkMalwareNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
-    return checkNeighbours(board, j, k, '*');
-}
-
-int checkFirewallNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
-    return checkNeighbours(board, j, k, 'f');
-}
-
-int checkHealthyNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
-    return checkNeighbours(board, j, k, 'o');
-}
-
-int checkInfectedServerNeighbours(std::vector<std::vector<char>> &board, int j, int k) {
-    return checkNeighbours(board, j, k, 'x');
-}
-
-char networkCellOptions(std::vector<std::vector<char>>& board,
-                        int j, int k) {
-    int malwareNeighbours = checkMalwareNeighbours(board, j, k);
+    int malwareNeighbours = checkNeighbours(neighbours, MALWARE);
     if (malwareNeighbours >= 2 && malwareNeighbours < 5) {
         return '*';
     }
-    if (checkHealthyNeighbours(board, j, k) == 2)
+    if (checkNeighbours(neighbours, HEALTHY) == 2)
         return 'f';
-    if (checkInfectedServerNeighbours(board, j, k) >= 1) {
+    if (checkNeighbours(neighbours, INFECTED) >= 1) {
         return '*';
     }
     return '.';
 }
 
-char malwareCellOptions(std::vector<std::vector<char>>& board,
-                        int j, int k) {
-    if (checkNetworkNeighbours(board, j, k) == 8)
+char malwareCellOptions(std::map<char, int> &neighbours) {
+
+    if (checkNeighbours(neighbours, NETWORK) == 8)
         return '.';
-    if (checkFirewallNeighbours(board, j, k) >= 2) {
+    if (checkNeighbours(neighbours, FIREWALL) >= 2) {
         return 'f';
     }
-    if (checkMalwareNeighbours(board, j, k) > 5 ) {
+    if (checkNeighbours(neighbours, MALWARE) > 5 ) {
         return '.';
     }
-    if (checkHealthyNeighbours(board, j, k) >= 1) {
+    if (checkNeighbours(neighbours, HEALTHY) >= 1) {
         return '.';
     }
     return '*';
 }
 
-char firewallCellOptions(std::vector<std::vector<char>>& board,
-                         int j, int k) {
-    if (checkMalwareNeighbours(board, j, k) >= 5 ) {
+char firewallCellOptions(std::map<char, int> &neighbours) {
+
+    if (checkNeighbours(neighbours, MALWARE) >= 5 ) {
         return '.';
     }
     return 'f';
 }
 
-char healthyServerOptions(std::vector<std::vector<char>>& board,
-                          int j, int k) {
-    if (checkMalwareNeighbours(board, j, k) >= 1 ) {
+char healthyServerOptions(std::map<char, int> &neighbours) {
+
+    if (checkNeighbours(neighbours, MALWARE) >= 1 ) {
         return 'x';
     }
     return 'o';
 }
 
-char infectedServerOptions(std::vector<std::vector<char>>& board,
-                           int j, int k) {
-    if (checkFirewallNeighbours(board, j, k) == 8) {
+char infectedServerOptions(std::map<char, int> &neighbours) {
+
+    if (checkNeighbours(neighbours, FIREWALL) == 8) {
         return 'o';
     }
     return 'x';
@@ -113,17 +114,20 @@ void mutate(std::vector<std::vector<char>>& board,
 
     char current = board[j][k];
     char newCell = ' ';
+
+    std::map<char, int> checkedNeighbours = checkNeighbours(board, j, k);
+
     switch (current) {
         case '.' :
-            newCell = networkCellOptions(board, j, k);    break;
+            newCell = networkCellOptions(checkedNeighbours);    break;
         case '*' :
-            newCell = malwareCellOptions(board, j, k);    break;
+            newCell = malwareCellOptions(checkedNeighbours);    break;
         case 'f' :
-            newCell = firewallCellOptions(board, j, k);   break;
+            newCell = firewallCellOptions(checkedNeighbours);   break;
         case 'o' :
-            newCell = healthyServerOptions(board, j, k);  break;
+            newCell = healthyServerOptions(checkedNeighbours);  break;
         case 'x' :
-            newCell = infectedServerOptions(board, j, k); break;
+            newCell = infectedServerOptions(checkedNeighbours); break;
         default: std::cerr << "invalid cell\n" << j << " " << k << " "
                            << current << "new cell:[" << newCell << "]\n";
     }
@@ -131,7 +135,7 @@ void mutate(std::vector<std::vector<char>>& board,
     newBoard[j][k] = newCell;
 }
 
-void printBoard(std::vector<std::vector<char>> &board){
+void printBoard(std::vector<std::vector<char>> &board) {
     for (int j = 0; j < board.size(); ++j) {
         for (int k = 0; k < board[0].size() + 1; ++k) {
             char c = board[j][k];
